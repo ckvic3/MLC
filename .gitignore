@@ -1,0 +1,5 @@
+historyLog/*
+logs/*
+**.pyc
+appendix
+utils/seperate_tailAndHead.pkl
