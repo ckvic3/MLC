@@ -76,7 +76,7 @@ class BaseDataset(Dataset):
         return len(self.img_ids)
 
 
-class m2sDataset(BaseDataset):
+class m2sCoco(BaseDataset):
     def __init__(self, root, ann_file, meta_path=None, transform=None, target_transform=None, m2s_path=None,
                  mask_path=None):
         """
@@ -89,7 +89,7 @@ class m2sDataset(BaseDataset):
             m2s_path:   multi to single label , .npy file
             mask_path:  masks used in multi to single label, .npy file
         """
-        super(m2sDataset, self).__init__(root, ann_file, meta_path, transform, target_transform)
+        super(m2sCoco, self).__init__(root, ann_file, meta_path, transform, target_transform)
         try:
             assert m2s_path is not None
             assert mask_path is not None
@@ -127,7 +127,7 @@ def test_m2sDataset():
     m2s_path = "/home/pengpeng/ASL/src/helper_functions/new_img_ids.npy"
     mask_path = "/home/pengpeng/ASL/src/helper_functions/masks.npy"
 
-    dataset = m2sDataset(root, annFile, meta_path, m2s_path=m2s_path, mask_path=mask_path)
+    dataset = m2sCoco(root, annFile, meta_path, m2s_path=m2s_path, mask_path=mask_path)
 
     for i in tqdm.trange(len(dataset)):
         img, label, mask = dataset.__getitem__(i)

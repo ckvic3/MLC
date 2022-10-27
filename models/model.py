@@ -5,39 +5,34 @@ from copy import deepcopy
 from src.models.pfc import PFC
 from src.models.cls_head import ClsHead, FCHead
 import torch.nn as nn
-from models import ResNet
-from torch.nn import functional as F
+
 
 class BaseModel(nn.Module):
     def __init__(self, num_classes=80, pretrained=True, frozen_stages=1):
         super(BaseModel, self).__init__()
         self.return_layers = {"avgpool": "0", "layer4": "1", }
-        self.backbone = ResNet(depth=50,num_stages=4,
-                 strides=(1, 2, 2, 2),
-                 dilations=(1, 1, 1, 1),
-                 out_indices=(0, 1, 2, 3),
-                 style='pytorch',
-                 frozen_stages=-1,
-                 conv_cfg=None,
-                 norm_cfg=dict(type='BN', requires_grad=True),
-                 norm_eval=True,
-                 gen_attention=None,
-                 )
+        self.backbone = IntermediateLayerGetter(resnet50(pretrained=pretrained), self.return_layers)
         self.neck = PFC(in_channels=2048, out_channels=256, dropout=0.5)
         self.fc = ClsHead(in_channels=256, num_classes=num_classes)
         
-        if pretrained:
-            self.backbone.init_weights(pretrained="torchvision://resnet50")
-            self.neck.init_weights()
-            self.fc.init_weights()
+        self.frozen_stages = frozen_stages
+        # self._freeze_stages()
 
-            
+    def _freeze_stages(self):
+        if self.frozen_stages >= 0:
+            self.backbone.bn1.eval()
+            for m in [self.backbone.conv1, self.backbone.bn1]:
+                for param in m.parameters():
+                    param.requires_grad = False
+
+        for i in range(1, self.frozen_stages + 1):
+            m = getattr(self.backbone, 'layer{}'.format(i))
+            m.eval()
+            for param in m.parameters():
+                param.requires_grad = False
+
     def forward(self, x):
-        x = self.backbone(x)
-        if isinstance(x,tuple):
-            x = x[-1]
-        x = F.avg_pool2d(x,x.size()[2:])
-        x = x.view(x.size()[0],-1)
+        x = self.backbone(x)['0'].view(x.shape[0], -1)
         x = self.neck(x)
         x = self.fc(x)
         return x

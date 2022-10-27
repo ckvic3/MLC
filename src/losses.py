@@ -120,10 +120,14 @@ class BCELoss(nn.Module):
 
         loss = y * torch.log(xs_pos) + (1-y) * torch.log(xs_neg)
         if mask is not None:
+            factor = mask.sum()
             mask = mask.cuda()
             loss = mask * loss
+        else:
+            factor = y.size(0) * y.size(1)
         loss = torch.neg(loss)
-        return torch.mean(loss)
+        loss = loss.sum() / factor
+        return loss
 
 
 class BalancedBCELoss(nn.Module):

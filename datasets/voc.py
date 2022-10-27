@@ -9,6 +9,8 @@ import mmcv
 import torchvision.transforms as transforms
 from yaml import load
 
+
+
 CLASSES = ('aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car',
                'cat', 'chair', 'cow', 'diningtable', 'dog', 'horse',
                'motorbike', 'person', 'pottedplant', 'sheep', 'sofa', 'train',
@@ -122,7 +124,7 @@ if __name__ == '__main__':
     #     _,target,mask = m2sDataset.__getitem__(i)
     #     sums+= target*mask
     # print(sums  )
-
+    
     loader = torch.utils.data.DataLoader(
         m2sDataset, batch_size=32, shuffle=True,
         num_workers=8, pin_memory=True)

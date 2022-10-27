@@ -25,7 +25,7 @@ class PFC(nn.Module):
 
     def init_weights(self):
         print("PFC init ...")
-        init.kaiming_normal_(self.fc.weight, mode='fan_out')
+        init.kaiming_normal_(self.fc.weight, mode='fan_in')
         init.constant_(self.fc.bias, 0)
         init.constant_(self.bn.weight, 1)
         init.constant_(self.bn.bias, 0)
@@ -33,7 +33,6 @@ class PFC(nn.Module):
     def forward(self, x):
         if isinstance(x, tuple):
             x = x[-1]
-
         # x = F.avg_pool2d(x, x.size()[2:])
         # y = self.avg_pool(x)
         # assert torch.max(abs(x-y)) == 0, print(x[1], y[1])

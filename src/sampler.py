@@ -8,7 +8,6 @@ import mmcv
 from tqdm import trange
 
 class RandomCycleIter:
-
     def __init__(self, data_list, test_mode=False):
         self.data_list = list(data_list)
         self.length = len(self.data_list)
@@ -60,28 +59,25 @@ def class_aware_sample_generator(cls_iter, data_iter_list, n, num_samples_cls=1)
 
 # Distributed Balanced loss Class aware Sampler
 class ClassAwareSampler(Sampler):
-    def __init__(self, data_source, meta_data=None, reduction=20, num_samples_cls=3):
+    def __init__(self, data_source, meta_data=None, num_samples_cls=3):
         random.seed(0)
         torch.manual_seed(0)
         self.data_source = data_source
         self.meta_data = meta_data
-        self.reduction = reduction
-
         self.epoch = 0
-        num_classes = 80
-
-        # 类别选择的random Sampler
-        self.class_iter = RandomCycleIter(list(range(num_classes)))
-
+        
         self.cls_data_list = self.meta_data["cls_data_list"]
         self.gt_labels = self.meta_data["gt_labels"]
-
+    
         self.num_classes = len(self.cls_data_list)
 
+        # 类别选择的random Sampler
+        self.class_iter = RandomCycleIter(list(range(self.num_classes)))
         # 对于每一个类种数据选择的random Sampler
         self.data_iter_list = [RandomCycleIter(x) for x in self.cls_data_list]
 
-        self.num_samples = int(max([len(x) for x in self.cls_data_list])) * self.num_classes // self.reduction
+        self.num_samples = len(self.gt_labels) * 10 
+        # self.num_samples = int(max([len(x) for x in self.cls_data_list])) * self.num_classes // self.reduction
         self.num_samples_cls = num_samples_cls
 
     def __iter__(self):
@@ -227,5 +223,4 @@ if __name__ == '__main__':
   86.,   95.,   72.,   93.,   68.,  145., 1230.,  304.,  393.,   97.,
 1297.,   72.,  422.,  262.,  170.,  170.,  191.,  228.,  231.,  352.,
   71.,  500.,  252.,  594.,  221.,  204.,   72.,   84.,   79.,   80.]
-
 """

@@ -4,10 +4,11 @@ import mmcv
 import torch
 from torch.utils.data.sampler import Sampler
 import numpy as np
-
+from torch.utils.data import Sampler, WeightedRandomSampler
+import os
+from tqdm import trange
 
 class RandomCycleIter:
-
     def __init__(self, data_list, test_mode=False):
         self.data_list = list(data_list)
         self.length = len(self.data_list)
@@ -59,30 +60,36 @@ def class_aware_sample_generator(cls_iter, data_iter_list, n, num_samples_cls=1)
 
 # Distributed Balanced loss Class aware Sampler
 class ClassAwareSampler(Sampler):
+    """
+    meta_data:  cls_data_list 需要包含每个类别的所包含的样本idx, 
+                gt_labels 
+    """
     def __init__(self, data_source, meta_data=None, reduction=4, num_samples_cls=3):
         random.seed(0)
         torch.manual_seed(0)
         self.data_source = data_source
         self.meta_data = meta_data
         self.reduction = reduction
-
+        # 每次连续采样样本数
+        self.num_samples_cls = num_samples_cls
         self.epoch = 0
-        num_classes = 80
-
-        # 类别选择的random Sampler,输出随机的返回值
-        self.class_iter = RandomCycleIter(list(range(num_classes)))
-
+        
         self.cls_data_list = self.meta_data["cls_data_list"]
-        # 好像没有实际意义
+        
+        # 画图需要
         self.gt_labels = self.meta_data["gt_labels"]
 
         self.num_classes = len(self.cls_data_list)
 
-        # 对于每一个类种数据选择的random Sampler
+        # 类别选择的random Sampler,输出随机的返回值
+        self.class_iter = RandomCycleIter(list(range(self.num_classes)))
+
+        # 从每个类数据选择的random Sampler
         self.data_iter_list = [RandomCycleIter(x) for x in self.cls_data_list]
 
-        self.num_samples = int(max([len(x) for x in self.cls_data_list])) * self.num_classes // self.reduction
-        self.num_samples_cls = num_samples_cls
+        self.num_samples = len(self.gt_labels) * 10 
+        # self.num_samples = int(max([len(x) for x in self.cls_data_list])) * self.num_classes // self.reduction
+        
 
     def __iter__(self):
         return class_aware_sample_generator(self.class_iter, self.data_iter_list, self.num_samples,
@@ -176,6 +183,54 @@ def sampler_test():
     print("base loader total", results.sum())
     print("base loader", results / torch.max(results))
 
+    
+
+class m2sSample(WeightedRandomSampler):
+    def __init__(self,data_source,reduction,num_classes,weights=None,
+                 weights_save_path="/home/pengpeng/ASL/appendix/coco/lt2017/sample_weights.npy",
+                 class_freq_file="/home/pengpeng/ASL/appendix/coco/longtail2017/class_freq.pkl"):
+        # 默认设置的为 COCO-MLT
+        self.num_samples = int(len(data_source) * num_classes / reduction)
+        if weights is None:
+            weights = get_weights(data_source,num_classes,weights_save_path,class_freq_file).tolist()
+        else:
+            weights = weights.tolist()
+        super(m2sSample, self).__init__(weights,self.num_samples,replacement=True)
+
+    def __len__(self):
+        return self.num_samples
+
+
+def get_weights(dataset, num_classes, weights_save_path="/home/pengpeng/ASL/appendix/coco/lt2017/sample_weights.npy",
+                class_freq_file="/home/pengpeng/ASL/appendix/coco/longtail2017/class_freq.pkl"):
+    """
+        获取 mutli to single 数据集的 class balance 采样时每个样本的采样概率。
+        Args:
+            dataset: Custom dateset
+            num_classes:
+
+        Returns:
+            sample_weights
+        """
+    if os.path.exists(weights_save_path):
+        sample_weigths = np.load(weights_save_path)
+    else:
+        class_freq = mmcv.load(class_freq_file)['class_freq']
+        class_freq = np.array(class_freq)
+        weights = np.sum(class_freq) / class_freq
+        sample_weigths = []
+        for i in trange(len(dataset)):
+            img, target, mask = dataset[i]
+            target = target * mask
+            if target.sum()>1:
+                print("idx",i,"target",target,"mask",mask)
+            for j in range(num_classes):
+                if target[j] == 1:
+                    sample_weigths.append(weights[j])
+        sample_weigths = np.array(sample_weigths)
+        np.save(weights_save_path, sample_weigths)
+    print(sample_weigths.shape)
+    return sample_weigths
 
 if __name__ == '__main__':
     metadata = mmcv.load("../appendix/coco/longtail2017/metadata.pkl")

@@ -4,6 +4,7 @@ import torch.nn as nn
 from torchvision.models import resnet
 from torch.nn import functional as F
 from .backbone import CreateBackbone,Bottleneck,BasicBlock
+from utils import build_conv_layer,build_norm_layer
 from .pfc import PFC
 from .cls_head import ClsHead
 import time
