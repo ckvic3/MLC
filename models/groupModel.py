@@ -179,13 +179,23 @@ def make_resnet_Layers(layers = [3,4]):
     return model
 
 class GroupModel(nn.Module):
-    def __init__(self,use_group=False,use_global=True,groups=[],num_classes=80,frozen_layers=-1,):
+    def __init__(self,use_group=False,use_global=True,groups=[],num_classes=80,frozen_layers=-1,layers=[4]):
+        """
+        params:
+        use_group:      使用分组分支
+        use_global:     使用全局分支
+        groups:         指定的分组
+        num_classes:    
+        fronzen_layers: backbone被固化的层数
+        layers:         指定分组分支中使用的resnet layers, backbone 会自动修正其层数
+        
+        """
         super(GroupModel, self).__init__()
         self.num_classes = num_classes
 
         self.resnet = resnet50(pretrained=True)
         self.backboneFeature = 2048
-        self.backbone = IntermediateLayerGetter(self.resnet,return_layers={"layer3":"feat"})
+        self.backbone = IntermediateLayerGetter(self.resnet,return_layers={"layer"+str(min(layers)-1):"feat"})
         
         self.frozen_layers = frozen_layers
         if self.frozen_layers > 0:
@@ -202,7 +212,7 @@ class GroupModel(nn.Module):
             for group in groups:
                 self.group_heads.append(
                 nn.Sequential(
-                make_resnet_Layers(layers=[4]),
+                make_resnet_Layers(layers),
                 nn.AdaptiveAvgPool2d((1, 1)),
                 nn.Flatten(),
                 PFC(in_channels=self.backboneFeature, out_channels=256, dropout=0.5),
@@ -212,7 +222,7 @@ class GroupModel(nn.Module):
         if self.use_global:
             self.group_heads.append(
                 nn.Sequential(
-                make_resnet_Layers(layers=[3,4]),
+                make_resnet_Layers(layers),
                 nn.AdaptiveAvgPool2d((1, 1)),
                 nn.Flatten(),
                 PFC(in_channels=self.backboneFeature, out_channels=256, dropout=0.5),
