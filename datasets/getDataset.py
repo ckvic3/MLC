@@ -2,6 +2,8 @@ import torchvision.transforms as transforms
 import os
 from .coco import CocoDetection,LTCOCO,m2sCoco
 from .voc import VocDataset, m2sVoc 
+from src.helper_functions.helper_functions import CutoutPIL
+from randaugment import RandAugment
 
 def getCOCODataset(use_m2s:bool, image_size):
     """
@@ -20,8 +22,12 @@ def getCOCODataset(use_m2s:bool, image_size):
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                          std=[0.229, 0.224, 0.225])
     trainTransform = transforms.Compose([
+                                        # transforms.ColorJitter(contrast=(0.5, 1.5),saturation=(0.5, 1.5),brightness=(0.5,1.5),hue=(-0.05,0.05)),
+                                        # transforms.RandomResizedCrop(size=(image_size,image_size),scale=(0.8,1),ratio=(0.5,2)),
+                                        # transforms.RandomHorizontalFlip(),
                                         transforms.Resize((image_size, image_size)),
-                                        transforms.RandomHorizontalFlip(),
+                                        CutoutPIL(cutout_factor=0.5),
+                                        RandAugment(),
                                         transforms.ToTensor(),
                                         normalization
                                     ])
@@ -46,10 +52,9 @@ def getCOCODataset(use_m2s:bool, image_size):
                                     normalization
                                 ]))
 
-    print("len(val_dataset)): ", len(val_dataset))
     print("len(train_dataset)): ", len(train_dataset))
+    print("len(val_dataset)): ", len(val_dataset))
     return train_dataset,val_dataset
-
 
 
 def getVocDataset(use_m2s:bool,image_size:int):
@@ -60,10 +65,14 @@ def getVocDataset(use_m2s:bool,image_size:int):
     normalization = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                          std=[0.229, 0.224, 0.225])
     trainTransform = transforms.Compose([
-                                        transforms.Resize((image_size, image_size)),
-                                        transforms.RandomHorizontalFlip(),
+                                        # transforms.ColorJitter(contrast=(0.5, 1.5),saturation=(0.5, 1.5),brightness=(0.5,1.5),hue=(-0.05,0.05)),
+                                        # transforms.RandomResizedCrop(size=(image_size,image_size),scale=(0.8,1),ratio=(0.5,2)),
+                                        # transforms.RandomHorizontalFlip(),
+                                        transforms.Resize(size=(image_size,image_size)),
+                                        CutoutPIL(cutout_factor=0.5),
+                                        RandAugment(),                                        
                                         transforms.ToTensor(),
-                                        normalization
+                                        normalization,
                                     ])
 
     if use_m2s:
@@ -76,7 +85,11 @@ def getVocDataset(use_m2s:bool,image_size:int):
     root = "/data/VOCdevkit/VOC2007/JPEGImages"
     annoFile = "/data/VOCdevkit/VOC2007/Annotations/"
     imgIdFile = "/home/pengpeng/MLC/appendix/VOCdevkit/longtail2012/test.txt"
-    test_dataset = VocDataset(root,annoFile,imgIdFile,transform=trainTransform)
+    test_dataset = VocDataset(root,annoFile,imgIdFile,transform=transforms.Compose([
+        transforms.Resize((image_size,image_size)),
+        transforms.ToTensor(),
+        normalization
+    ]))
     
     print("len(val_dataset)): ", len(test_dataset))
     print("len(train_dataset)): ", len(train_dataset))

@@ -59,13 +59,14 @@ def class_aware_sample_generator(cls_iter, data_iter_list, n, num_samples_cls=1)
 
 # Distributed Balanced loss Class aware Sampler
 class ClassAwareSampler(Sampler):
-    def __init__(self, data_source, meta_data=None, num_samples_cls=3):
+    def __init__(self, data_source, meta_data=None, num_samples_cls=3,reduce = 4):
         random.seed(0)
         torch.manual_seed(0)
         self.data_source = data_source
         self.meta_data = meta_data
         self.epoch = 0
-        
+        self.reduce = reduce
+
         self.cls_data_list = self.meta_data["cls_data_list"]
         self.gt_labels = self.meta_data["gt_labels"]
     
@@ -76,8 +77,9 @@ class ClassAwareSampler(Sampler):
         # 对于每一个类种数据选择的random Sampler
         self.data_iter_list = [RandomCycleIter(x) for x in self.cls_data_list]
 
-        self.num_samples = len(self.gt_labels) * 10 
-        # self.num_samples = int(max([len(x) for x in self.cls_data_list])) * self.num_classes // self.reduction
+        # self.num_samples = len(self.gt_labels) * 10 
+        self.num_samples = int(max([len(x) for x in self.cls_data_list])) * self.num_classes // self.reduce
+        # attention, ~ 1500(person) * 80
         self.num_samples_cls = num_samples_cls
 
     def __iter__(self):

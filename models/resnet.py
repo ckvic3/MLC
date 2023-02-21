@@ -394,7 +394,8 @@ class ResNet(nn.Module):
             for param in m.parameters():
                 param.requires_grad = False
 
-    def init_weights(self, pretrained=None):
+    def init_weights(self, pretrained="torchvision://resnet50"):
+        print("load pretrained model weight from ",pretrained)
         if isinstance(pretrained, str):
             load_checkpoint(self, pretrained, strict=False, logger=None)
         elif pretrained is None:

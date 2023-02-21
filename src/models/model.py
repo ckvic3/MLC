@@ -9,25 +9,25 @@ from models import ResNet
 from torch.nn import functional as F
 
 class BaseModel(nn.Module):
-    def __init__(self, num_classes=80, pretrained=True, frozen_stages=1):
+    def __init__(self, num_classes=80, pretrained=True, frozen_stages=-1,model_path="torchvision://resnet50"):
         super(BaseModel, self).__init__()
-        self.return_layers = {"avgpool": "0", "layer4": "1", }
         self.backbone = ResNet(depth=50,num_stages=4,
                  strides=(1, 2, 2, 2),
                  dilations=(1, 1, 1, 1),
                  out_indices=(0, 1, 2, 3),
                  style='pytorch',
-                 frozen_stages=-1,
+                 frozen_stages=frozen_stages,
                  conv_cfg=None,
                  norm_cfg=dict(type='BN', requires_grad=True),
                  norm_eval=True,
                  gen_attention=None,
                  )
+        self.model_path = model_path
         self.neck = PFC(in_channels=2048, out_channels=256, dropout=0.5)
         self.fc = ClsHead(in_channels=256, num_classes=num_classes)
         
         if pretrained:
-            self.backbone.init_weights(pretrained="torchvision://resnet50")
+            self.backbone.init_weights(pretrained=self.model_path)
             self.neck.init_weights()
             self.fc.init_weights()
 

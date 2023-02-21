@@ -21,7 +21,7 @@ class ClsHead(nn.Module):
         self.method = method
         self.no_bias = method in ['matmul', 'cos']
 
-        # self.init_weights()
+        self.init_weights()
 
     def init_weights(self):
         print("cls head init...")

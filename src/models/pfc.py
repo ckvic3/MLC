@@ -21,7 +21,7 @@ class PFC(nn.Module):
         if self.dropout > 0:
             self.drop = nn.Dropout(self.dropout)
         
-        # self.init_weights()
+        self.init_weights()
 
     def init_weights(self):
         print("PFC init ...")

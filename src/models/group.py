@@ -7,6 +7,9 @@ from .backbone import CreateBackbone,Bottleneck,BasicBlock
 from .pfc import PFC
 from .cls_head import ClsHead
 import time
+from torchvision.models._utils import IntermediateLayerGetter
+from torchvision.models.resnet import resnet50
+from fightingcv_attention.attention.CBAM import CBAMBlock
 
 expansions = {"resnet18": 512,
               "resnet50": 2048,
@@ -14,27 +17,38 @@ expansions = {"resnet18": 512,
 
 
 class BaseModel(nn.Module):
-    """
-    a base model to verity group
-    """
-
-    def __init__(self, arch="resnet50", num_classes=80, pretrained=True, frozen_stages=None):
-        super(BaseModel, self).__init__()
-        self.backbone = CreateBackbone(arch=arch, pretrained=pretrained)
-        # backbone produce feature length
-        if arch not in expansions.keys():
-            raise ModuleNotFoundError
-        self.backboneDimension = expansions[arch]
-
-        print("we are using a neck module...")
-        self.neck = PFC(in_channels=self.backboneDimension, out_channels=256, dropout=0.5)
+    def __init__(self,num_classes=80) -> None:
+        super(BaseModel,self).__init__()
+        self.backbone = IntermediateLayerGetter(resnet50(pretrained=True),return_layers={"avgpool":"avgpool"})
+        self.neck = PFC(in_channels=2048,out_channels=256,dropout=0.5)
         self.fc = ClsHead(in_channels=256, num_classes=num_classes)
-
-    def forward(self, x):
-        x = self.backbone(x)
+        
+    def forward(self,x):
+        x = self.backbone(x)["avgpool"]
+        x = x.view(x.shape[0],-1)
         x = self.neck(x)
         x = self.fc(x)
         return x
+
+class CBAMModel(nn.Module):
+    def __init__(self,num_classes=80) -> None:
+        super(CBAMModel,self).__init__()
+        self.backbone = IntermediateLayerGetter(resnet50(pretrained=True),return_layers={"layer4":"layer4"})
+        self.attention = CBAMBlock(channel=2048,reduction=16,kernel_size=7)
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.neck = PFC(in_channels=2048,out_channels=256,dropout=0.5)
+        self.fc = ClsHead(in_channels=256, num_classes=num_classes)
+        
+    def forward(self,x):
+        x = self.backbone(x)["layer4"]       
+        x = self.attention(x)
+        x = self.avgpool(x)    
+        x = x.view(x.shape[0],-1)
+        x = self.neck(x)
+        x = self.fc(x)
+        return x
+
+
 
 
 def conv1x1(in_planes, out_planes, stride=1):

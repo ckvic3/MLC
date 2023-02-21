@@ -179,7 +179,7 @@ def make_resnet_Layers(layers = [3,4]):
     return model
 
 class GroupModel(nn.Module):
-    def __init__(self,use_group=False,use_global=True,groups=[],num_classes=80,frozen_layers=-1,layers=[4]):
+    def __init__(self,mode="global",label_groups=[],num_classes=80,freeze_max_layer=0):
         """
         params:
         use_group:      使用分组分支
@@ -195,24 +195,33 @@ class GroupModel(nn.Module):
 
         self.resnet = resnet50(pretrained=True)
         self.backboneFeature = 2048
-        self.backbone = IntermediateLayerGetter(self.resnet,return_layers={"layer"+str(min(layers)-1):"feat"})
+        self.backbone = IntermediateLayerGetter(self.resnet,return_layers={"layer3":"feat"})
         
-        self.frozen_layers = frozen_layers
+        self.frozen_layers = freeze_max_layer
         if self.frozen_layers > 0:
             print("fronzen backbone layer below ", self.frozen_layers)
             self._freeze_stages()
-
-        self.use_group = use_group
-        self.use_global = use_global
-        self.groups = groups
+        
+        self.mode = mode
+        if self.mode == "global":
+            self.use_group = False
+            self.use_global = True
+        elif self.mode == "local":
+            self.use_global = False
+            self.use_group = True
+        elif self.mode == "fusion":
+            self.use_group = True
+            self.use_group = True
+            
+        self.groups = label_groups
         self.group_heads = nn.ModuleList()
 
         # 每个Group分支拥有单独的特征提取模块
         if self.use_group:
-            for group in groups:
+            for group in self.groups:
                 self.group_heads.append(
                 nn.Sequential(
-                make_resnet_Layers(layers),
+                make_resnet_Layers([4]),
                 nn.AdaptiveAvgPool2d((1, 1)),
                 nn.Flatten(),
                 PFC(in_channels=self.backboneFeature, out_channels=256, dropout=0.5),
@@ -222,7 +231,7 @@ class GroupModel(nn.Module):
         if self.use_global:
             self.group_heads.append(
                 nn.Sequential(
-                make_resnet_Layers(layers),
+                make_resnet_Layers([4]),
                 nn.AdaptiveAvgPool2d((1, 1)),
                 nn.Flatten(),
                 PFC(in_channels=self.backboneFeature, out_channels=256, dropout=0.5),
@@ -230,6 +239,9 @@ class GroupModel(nn.Module):
             )
 
     def _freeze_stages(self):
+        if self.frozen_layers <= 0:
+            return 
+        
         self.resnet.bn1.eval()
         for m in [self.resnet.conv1, self.resnet.bn1]:
             for param in m.parameters():
@@ -248,15 +260,15 @@ class GroupModel(nn.Module):
         b = x.shape[0]
         x = self.backbone(x)["feat"]
         
-        results = []
+        global_logit = local_logit = None
+        
         if self.use_global:
-            global_out = self.group_heads[-1](x)
-            results.append(global_out)
+            global_logit = self.group_heads[-1](x)
 
         if self.use_group:
-            group_out = torch.zeros(size=[b, self.num_classes]).to(device)
+            local_logit = torch.zeros(size=[b, self.num_classes]).to(device)
             for i,group in enumerate(self.groups):
-                group_out[:,group] = self.group_heads[i](x)
-            results.append(group_out)  
+                local_logit[:,group] = self.group_heads[i](x)    
+                
+        return (local_logit,global_logit)
 
-        return results

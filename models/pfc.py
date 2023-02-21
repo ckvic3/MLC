@@ -21,7 +21,7 @@ class PFC(nn.Module):
         if self.dropout > 0:
             self.drop = nn.Dropout(self.dropout)
         
-        # self.init_weights()
+        self.init_weights()
 
     def init_weights(self):
         print("PFC init ...")
@@ -35,8 +35,6 @@ class PFC(nn.Module):
             x = x[-1]
         # x = F.avg_pool2d(x, x.size()[2:])
         # y = self.avg_pool(x)
-        # assert torch.max(abs(x-y)) == 0, print(x[1], y[1])
-        # x = x.view(x.size(0), -1)
         x = self.fc(x)
         x = self.bn(x)
         if self.dropout > 0:
