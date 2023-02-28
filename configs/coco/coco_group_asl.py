@@ -24,8 +24,11 @@ dataset = dict(
 )
 
 loss = dict(
-    name="bce",
+    name="asl",
     param = dict(
+    gamma_pos=0,
+    gamma_neg=4,
+    disable_torch_grad_focal_loss=True,
     useCopyDecoupling = useCopyDecoupling
     )
 )

@@ -224,9 +224,10 @@ class GroupModel(nn.Module):
                 make_resnet_Layers([4]),
                 nn.AdaptiveAvgPool2d((1, 1)),
                 nn.Flatten(),
-                PFC(in_channels=self.backboneFeature, out_channels=256, dropout=0.5),
-                ClsHead(in_channels=256, num_classes=len(group)))
-                )  
+                # PFC(in_channels=self.backboneFeature, out_channels=256, dropout=0.5),
+                # ClsHead(in_channels=256, num_classes=len(group)))
+                nn.Linear(in_features=2048,out_features=len(group))
+                ) )
 
         if self.use_global:
             self.group_heads.append(
@@ -234,8 +235,10 @@ class GroupModel(nn.Module):
                 make_resnet_Layers([4]),
                 nn.AdaptiveAvgPool2d((1, 1)),
                 nn.Flatten(),
-                PFC(in_channels=self.backboneFeature, out_channels=256, dropout=0.5),
-                ClsHead(in_channels=256, num_classes=self.num_classes))
+                # PFC(in_channels=self.backboneFeature, out_channels=256, dropout=0.5),
+                # ClsHead(in_channels=256, num_classes=self.num_classes)
+                nn.Linear(in_features=2048,out_features=self.num_classes)
+                )
             )
 
     def _freeze_stages(self):

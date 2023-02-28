@@ -24,8 +24,9 @@ dataset = dict(
 )
 
 loss = dict(
-    name="bce",
+    name="focal",
     param = dict(
+    gamma=2,
     useCopyDecoupling = useCopyDecoupling
     )
 )

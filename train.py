@@ -75,7 +75,7 @@ def main():
             imgs=imgs.cuda()
             
             output = model(imgs)
-            if cfg.model['name'] == 'base' or cfg.model['name'] == "cbam":
+            if cfg.model['name'] != 'group':
                 loss = criterion(output.float(), targets, masks)
             else:
                 if cfg.model['param']['mode'] == 'local':
@@ -160,7 +160,7 @@ def validate(model,loader,cfg,log):
         with torch.no_grad():
             output = model(imgs)
 
-        if cfg.model['name'] == 'base' or cfg.model['name'] == "cbam":
+        if cfg.model['name'] != 'group':
             output_regular = Sig(output).cpu()
         else:
             if cfg.model['param']['mode'] == 'local':
